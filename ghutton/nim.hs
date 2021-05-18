@@ -1,4 +1,6 @@
-import Data.Char
+import Data.Char (digitToInt, isDigit)
+import System.CPUTime (getCPUTime)
+import System.IO (hFlush, stdout)
 
 -- Board utilities:
 type Board = [Int]
@@ -23,7 +25,9 @@ move bs row num =
 -- I/O utilities:
 
 newline :: IO ()
-newline = putChar '\n'
+newline = do
+  putChar '\n'
+  hFlush stdout
 
 stars :: Int -> String
 stars n = concat $ replicate n "* "
@@ -45,8 +49,9 @@ putBoard [a, b, c, d, e] = do
 getDigit :: String -> IO Int
 getDigit prompt = do
   putStr prompt
-  x <- getChar
-  newline
+  hFlush stdout
+  (x : _) <- getLine
+  --newline
   if isDigit x
     then return (digitToInt x)
     else do
@@ -76,7 +81,7 @@ play board player =
       else do
         newline
         putStr "Player "
-        putStrLn (show player)
+        print (show player)
         r <- getDigit "Enter a row number: "
         n <- getDigit "Enter stars to remove: "
         if valid board r n
@@ -86,29 +91,103 @@ play board player =
             putStrLn "ERROR: Invalid Move!"
             play board player
 
--- autoplay
+--------------------------------------------------------------------------------
+-- autoplay, AI
+
+-- generate all possible moves: return list of (row, n) tuples
 moves :: Board -> [(Int, Int)]
 moves bs = [(row, n) | (b, row) <- zip bs [1 ..], n <- [1 .. b]]
 
-selectMove :: Board -> (Int, Int)
-selectMove b =
-  let ((row, n) : xs) = moves b
-   in (row, n)
+-- generate all possible board combinations
+boardMoves :: Board -> [Board]
+boardMoves b = [move b row n | (row, n) <- moves b]
 
-playGame :: Board -> Int -> IO ()
-playGame board player = do
-  putBoard board
-  if finished board
-    then do
-      putStrLn ("Player: " ++ show (next player) ++ " WINS!")
-    else
-      let (row, n) = selectMove board
-          b = move board row n
-       in do
-            newline
-            print ("Player: " ++ show player)
-            print ("Move: " ++ show row ++ ", -" ++ show n)
-            putBoard b
-            putStrLn (replicate 20 '=')
-            newline
-            playGame b (next player)
+-- win condition: single row occupied, win by removed all stars
+win :: Board -> Bool
+win board = length (filter (/= 0) board) == 1
+
+-- given board, return all possible winners: list with either '1' (player 1)
+-- or '2' (player 2)
+winners :: Board -> Int -> [Int]
+winners board curPlayer
+  | win board = [curPlayer]
+  | otherwise = concat [winners b (next curPlayer) | b <- boardMoves board]
+
+-- given board return number of times player one or two can win:
+-- tuple (Int, Int)
+winPlayers :: Board -> Int -> (Int, Int)
+winPlayers board curPlayer =
+  let w = winners board curPlayer
+      p1 = length $ filter (1 ==) w
+      p2 = length $ filter (2 ==) w
+   in (p1, p2)
+
+-- select best move between two moves:
+-- where number of wins for player 'curPlayer' are higher than for other player
+type IT = (Int, Int)
+
+selectBest :: (IT, IT) -> (IT, IT) -> Int -> (IT, IT)
+selectBest (win1, move1) (win2, move2) curPlayer
+  | curPlayer == 1 =
+    let p1 = uncurry (-) win1
+        p2 = uncurry (-) win2
+     in if p1 > p2 then (win1, move1) else (win2, move2)
+  | otherwise =
+    let p1 = uncurry (-) win1
+        p2 = uncurry (-) win2
+     in if p1 > p2 then (win2, move2) else (win1, move1)
+
+-- select best move among all possible moves
+bestMove :: Board -> Int -> (Int, Int)
+bestMove board curPlayer
+  | finished board = (0, 0)
+  | otherwise =
+    let m = moves board
+        w = [winPlayers (move board r n) (next curPlayer) | (r, n) <- m]
+        (l : ls) = zip w m
+     in snd $ foldl (\a b -> selectBest a b curPlayer) l ls
+
+playerName :: Int -> String
+playerName name
+  | name == 1 = "Human"
+  | otherwise = "HAL"
+
+-- play against computer: it will always select the best move
+-- (exhaustive search), impossible for a human to win
+playAI :: Board -> Int -> IO ()
+playAI board player =
+  do
+    newline
+    putBoard board
+    if finished board
+      then do
+        newline
+        putStr "Player "
+        putStr (playerName (next player))
+        putStrLn " WINS!!!"
+      else do
+        newline
+        putStr "Player "
+        putStrLn (playerName player)
+        if player == 1
+          then do
+            r <- getDigit "Enter a row number: "
+            n <- getDigit "Enter stars to remove: "
+            if valid board r n
+              then playAI (move board r n) (next player)
+              else do
+                newline
+                putStrLn "ERROR: Invalid Move!"
+                playAI board player
+          else do
+            startTime <- getCPUTime
+            let (row, n) = bestMove board player
+            putStrLn $ "Row: " ++ show row ++ " N: " ++ show n
+            finishTime <- getCPUTime
+            print ("Time: " ++ show 
+                   (fromIntegral (finishTime - startTime) / 1000000000000) 
+                   ++ " s")
+            playAI (move board row n) (next player)
+
+main :: IO ()
+main = playAI initial 1
