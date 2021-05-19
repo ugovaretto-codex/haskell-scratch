@@ -1,6 +1,7 @@
-import Data.Char (digitToInt, isDigit)
-import System.CPUTime (getCPUTime)
-import System.IO (hFlush, stdout)
+import           Data.Char      (digitToInt, isDigit)
+import           System.CPUTime (getCPUTime)
+import           System.IO      (hFlush, stdout)
+import Control.Parallel
 
 -- Board utilities:
 type Board = [Int]
@@ -116,7 +117,7 @@ winners board curPlayer
 -- given board return number of times player one or two can win:
 -- tuple (Int, Int)
 winPlayers :: Board -> Int -> (Int, Int)
-winPlayers board curPlayer =
+winPlayers board curPlayer = 
   let w = winners board curPlayer
       p1 = length $ filter (1 ==) w
       p2 = length $ filter (2 ==) w
@@ -146,6 +147,22 @@ bestMove board curPlayer
         w = [winPlayers (move board r n) (next curPlayer) | (r, n) <- m]
         (l : ls) = zip w m
      in snd $ foldl (\a b -> selectBest a b curPlayer) l ls
+
+-- slow
+wins :: Board -> Int -> (Int, Int) -> (Int, Int)
+wins board player (p, q) | win board = if player == 1 then (p + 1, q) 
+                           else (p, q+1)
+                         | otherwise = foldl (\(a,b) (c, d) -> (a+c, b+d)) 
+                                       (0,0) [wins b (next player) (p, q) 
+                                              | b <- boardMoves board]
+
+-- pickMove :: Board -> Int -> (Int, Int)
+-- pickMove board player
+--   | finished board = (0,0)
+--   | otherwise =
+--     let m = moves board
+--         (l : ls) = zip (wins board player (0,0)) m
+--      in snd $ foldl (\a b -> selectBest a b player) l ls
 
 playerName :: Int -> String
 playerName name
@@ -184,10 +201,16 @@ playAI board player =
             let (row, n) = bestMove board player
             putStrLn $ "Row: " ++ show row ++ " N: " ++ show n
             finishTime <- getCPUTime
-            print ("Time: " ++ show 
-                   (fromIntegral (finishTime - startTime) / 1000000000000) 
+            print ("Time: " ++ show
+                   (fromIntegral (finishTime - startTime) / 1000000000000)
                    ++ " s")
             playAI (move board row n) (next player)
 
+nfib :: Int -> Int
+nfib n | n <= 1 = 1
+       | otherwise = par n1 (seq n2 (n1 + n2 + 1))
+                     where n1 = nfib (n-1)
+                           n2 = nfib (n-2)
+
 main :: IO ()
-main = playAI initial 1
+main = print (wins [4,4,3,2,1] 1 (0,0))
