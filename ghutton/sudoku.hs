@@ -1,5 +1,6 @@
 
 module Main where
+
 -- generic
 type Grid = Matrix Value
 
@@ -11,6 +12,17 @@ type Value = Char
 
 blank :: Grid
 blank = replicate 9 $ replicate 9 '.'
+
+superEasy :: Grid
+superEasy = [".6.3..8.4",
+             "537.9....",
+             ".4...63.7",
+             ".9..51238",
+             ".........",
+             "71362..4.",
+             "3.64...1.",
+             "....6.523",
+             "1.2..9.8."]
 
 rows :: Matrix a -> [Row a]
 rows = id
@@ -32,18 +44,46 @@ boxs n m = let l = length (head m) - n
 blankVal :: Value
 blankVal = '.'
 
-nodups :: [Value] -> Bool 
+nodups :: [Value] -> Bool
 nodups [] = True
-nodups (x:xs)  = if x == blankVal then nodups xs
-                 else notElem x xs && nodups xs
+nodups (x:xs) = if x == blankVal then nodups xs 
+                else x `notElem` xs && nodups xs
 
--- type Grid = [[Char]]
--- cols = transpose
+genChoices :: Value -> Value -> Row Value -> Grid
+genChoices x v xs = genChoices' x v ([],xs) where
+     genChoices' x v ([],[]) = []
+     genChoices' x v (l,[]) = []
+     genChoices' x v (ls,r:rs) | r == v = (ls ++ [x] ++ rs) 
+                                          : genChoices' x v (ls ++ [r],rs)
+                               | otherwise = genChoices' x v (ls ++ [r],rs)
 
--- domain
-valid :: Grid -> Bool 
+genElements :: [[a]] -> [a] -> [[a]]
+genElements es xs = genElements' es ([],xs) where
+     genElements' _ (_,[]) = []
+     genElements' (c:cs) (ls,r:rs) = [ls ++ [x] ++ rs | x <- c] 
+                                     ++ genElements' cs (ls ++ [r], rs)
+
+genAll :: Value -> Value -> Grid -> [Grid]
+genAll x v g = genElements (map (genChoices x v) g) g
+
+genAllChoices :: Grid -> [Grid]
+genAllChoices g = [gs | x <- ['1'..'9'], gs <- genAll x '.' g]
+
+--warning: assumes grid is valid!
+finished :: Grid -> Bool 
+finished = all (notElem '.')
+
+solve :: Grid -> [Grid]
+solve [] = []
+solve g | finished g = [g]
+        | otherwise = concat [solve gs | gs <- genAllChoices g, valid gs]
+
+---- domain
+valid :: Grid -> Bool
 valid g = all nodups (rows g) && all nodups (cols g) && all nodups (boxs 3 g)
 
-
+-- entry point
 main :: IO ()
-main = print ""
+main = do
+          let sol = solve superEasy
+          print (take 1 sol)
