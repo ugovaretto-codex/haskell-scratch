@@ -49,41 +49,27 @@ nodups [] = True
 nodups (x:xs) = if x == blankVal then nodups xs 
                 else x `notElem` xs && nodups xs
 
-genChoices :: Value -> Value -> Row Value -> Grid
-genChoices x v xs = genChoices' x v ([],xs) where
-     genChoices' x v ([],[]) = []
-     genChoices' x v (l,[]) = []
-     genChoices' x v (ls,r:rs) | r == v = (ls ++ [x] ++ rs) 
-                                          : genChoices' x v (ls ++ [r],rs)
-                               | otherwise = genChoices' x v (ls ++ [r],rs)
+type Choices = [Value]
+choices :: Grid -> Matrix Choices
+choices   = map (map choice)  where
+               choice v = if v == '.' then ['1'..'9']
+                          else [v]
+collapse :: Matrix [a] -> [Matrix a]
+collapse m = cp (map cp m)
 
-genElements :: [[a]] -> [a] -> [[a]]
-genElements es xs = genElements' es ([],xs) where
-     genElements' _ (_,[]) = []
-     genElements' (c:cs) (ls,r:rs) = [ls ++ [x] ++ rs | x <- c] 
-                                     ++ genElements' cs (ls ++ [r], rs)
-
-genAll :: Value -> Value -> Grid -> [Grid]
-genAll x v g = genElements (map (genChoices x v) g) g
-
-genAllChoices :: Grid -> [Grid]
-genAllChoices g = [gs | x <- ['1'..'9'], gs <- genAll x '.' g, valid gs]
-
---warning: assumes grid is valid!
-finished :: Grid -> Bool 
-finished = all (notElem '.')
-
-solve :: Grid -> [Grid]
-solve [] = []
-solve g | finished g = [g]
-        | otherwise = concat [solve gs | gs <- genAllChoices g]
+cp :: [[a]] -> [[a]]
+cp [] = [[]]
+cp (xs:xss) = [ y : ys | y <- xs, ys <- cp xss]
 
 ---- domain
 valid :: Grid -> Bool
 valid g = all nodups (rows g) && all nodups (cols g) && all nodups (boxs 3 g)
 
+solve :: Grid -> [Grid]
+solve = filter valid . collapse . choices
+
 -- entry point
 main :: IO ()
 main = do
-          let sol = solve superEasy
-          print (take 1 sol)
+          let solutions = solve superEasy
+          print $ take 1 solutions
