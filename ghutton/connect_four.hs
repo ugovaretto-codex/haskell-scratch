@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Main where
 import Data.List
-import SortedTree 
+import SortedTree
 
 rows :: Int
 rows = 6
@@ -124,19 +124,19 @@ showBoard b = let bi = trans (fillMat rows b)
 choices :: Matrix -> [Matrix]
 choices m = choices' [O,X] ([],m) where
   choices' _ (_,[]) = []
-  choices' p (lss,rs:rss) = [lss ++ [rs ++ [x]] ++ rss 
+  choices' p (lss,rs:rss) = [lss ++ [rs ++ [x]] ++ rss
                              | length rs < rows, x <- p]
                              ++ choices' p (lss ++ [rs], rss)
 search :: Player -> Int -> Matrix -> (Matrix, Player)
 search _ _ [] = ([],B)
 search p d m | tag m `elem` [O,X] = (m, tag m)
              | d == 0 = (m, tag m)
-             | otherwise = let t = treeSort (\(_,x) (_,y) -> x < y) 
+             | otherwise = let t = treeSort (\(_,x) (_,y) -> x < y)
                                    [search (nextPlayer p) (d-1) x | x <- choices m]
                            in if maxPlayer p then last t else head t
 
-maxPlayer :: Player -> Bool 
-maxPlayer X = True 
+maxPlayer :: Player -> Bool
+maxPlayer X = True
 maxPlayer O = False
 
 nextPlayer :: Player -> Player
@@ -160,5 +160,30 @@ nextPlayer O = X
 --        execute move
 --        go to (0) nextPlayer player board 
 
+computer :: Player -> Bool
+computer p | p == O = True
+           | otherwise = False
+
+play :: Player -> Board -> IO ()
+play player board = do
+                      putStrLn $ showBoard (fillm board)
+                      let t = tag board
+                      if t `elem` [X,O] then
+                        print ("Player " ++ show t ++ " WINS!")
+                      else
+                        if computer player then do
+                          print "Thinking..."
+                          let (b,_) = search player depth board
+                          play (nextPlayer player) b
+                        else do
+                          print "Select a column between 1 and 7"
+                          x  <- readLn
+                          let c = read x :: Int
+                          if c > 7 || c < 1 then play player board
+                          else play (nextPlayer player) (boardAppend player c board)
+
+
+
+
 main :: IO ()
-main = play
+main = play X initial
