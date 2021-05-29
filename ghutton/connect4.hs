@@ -123,7 +123,7 @@ winners w ws = filter (\xs -> length xs == w) (allSeq ws)
 
 allCells :: Matrix -> [Row]
 allCells [] = []
-allCells m = allDiags m ++ m ++ trans m
+allCells m = m ++ allDiags m ++ m ++ trans m
 
 allSeq :: Eq a => [a] -> [[a]]
 allSeq [] = []
@@ -143,8 +143,8 @@ allDiags m =
 trans :: Matrix -> Matrix
 trans [] = []
 trans [[x]] = [[x]]
-trans ([] : _) = [] -- [[],[],[]...] case
-trans m = map head m : trans (map tail m)
+trans ([]: _) = [] -- [[],[],[]...] case
+trans m = map head m : (if (not . null) (tail (head m)) then map tail m else [])
 
 leftDiag :: Matrix -> Row
 leftDiag [] = []
