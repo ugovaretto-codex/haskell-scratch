@@ -55,8 +55,10 @@ play player board = do
           x <- getLine
           let c = (read x :: Int) - 1
           if c > (rows - 1) || c < 0 || length (board !! c) >= cols
-            then play player board
-            else
+            then do
+              putStrLn "Invalid row"
+              play player board
+            else do
               play
                 (nextPlayer player)
                 (append player c board)
