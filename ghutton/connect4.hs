@@ -40,21 +40,21 @@ play player board = do
   putStrLn $ showBoard board --print filled board
   let t = tag board -- check tag, if X or O somebody is the winner
   if t `elem` [X, O]
-    then print ("Player " ++ show t ++ " WINS!")
+    then putStrLn ("Player " ++ show t ++ " WINS!")
     else
       if computer player
         then do
-          print "Thinking..."
+          putStrLn "Thinking..."
           let move = bestMove player board
-          print ("column " ++ show move)
+          putStrLn ("column " ++ show move)
           let newBoard =
                 append player move board
           play (nextPlayer player) newBoard
         else do
-          print "Select a row between 1 and 7"
+          putStrLn  $ "Select a row between 1 and " ++ show rows
           x <- getLine
           let c = (read x :: Int) - 1
-          if c > 6 || c < 0
+          if c > (rows - 1) || c < 0 || length (board !! c) >= cols
             then play player board
             else
               play
@@ -178,14 +178,14 @@ appSeq f (x : xs) = f (x : xs) : appSeq f xs
 
 full :: Matrix -> Bool
 full [] = False
-full m = all (\xs -> not (null xs) && all (\x -> x `elem` [O,X]) xs) m
+full m = all (\xs -> not (null xs) && all (\x -> x `elem` [O, X]) xs) m
 
 -- AI
 bestMove :: Player -> Board -> Int
 bestMove p b =
   let moves =
         [ (search p depth $ append p m b, m)
-          | m <- [0 .. 6]
+          | m <- [0 .. rows - 1], length (b !! m) < cols
         ]
    in selectMove p moves
 
@@ -197,14 +197,12 @@ search p d m
   | full m = B
   | otherwise =
     let t =
-          --treeSort
-          --  (<)
-            [ search (nextPlayer p) (d -1) xs
-              | xs <- choices p m
-            ]
-     in 
-       if null t then B
-       else if maxPlayer p then foldr max O t else foldr min X t
+          [ search (nextPlayer p) (d -1) xs
+            | xs <- choices p m
+          ]
+     in if null t
+          then B
+          else if maxPlayer p then foldr max O t else foldr min X t
 
 selectMove :: Player -> [(Player, Int)] -> Int
 selectMove p xs
@@ -232,4 +230,4 @@ selectMove p xs
      in x
 
 choices :: Player -> Matrix -> [Matrix]
-choices p m = [append p i m | i <- [0..6] ]
+choices p m = [append p i m | i <- [0 .. rows - 1]]
