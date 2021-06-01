@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wno-deferred-type-errors #-}
+
 module Main where
-import System.IO
 
 import Data.List
+import System.IO
 import System.Random
 
 -- Entry point
@@ -137,7 +138,7 @@ toSym p
 tag :: [Row] -> Player
 tag [] = B
 tag m =
-  let p = filter (\x -> x `notElem` [Nothing,Just B]) $ map (winner 3) (allCells $ fillm m)
+  let p = filter (\x -> x `notElem` [Nothing, Just B]) $ map (winner 3) (allCells $ fillm m)
       extract (Just x) = x
    in if null p then B else extract (head p)
 
@@ -172,8 +173,9 @@ allDiags m =
 trans :: Matrix -> Matrix
 trans [] = []
 trans ([] : xss) = trans xss
-trans ((x : xs) : xss) = (x : [h | (h : _) <- xss])
-                         : trans (xs : [t | (_ : t) <- xss])
+trans ((x : xs) : xss) =
+  (x : [h | (h : _) <- xss]) :
+  trans (xs : [t | (_ : t) <- xss])
 
 leftDiag :: Matrix -> Row
 leftDiag [] = []
