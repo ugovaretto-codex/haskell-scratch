@@ -13,16 +13,16 @@ main = play X initial
 -- Data types & global config
 -- Transposed board to make is easier to append to rows instead of columns
 rows :: Int
-rows = 4
+rows = 7
 
 cols :: Int
-cols = 4
+cols = 6
 
 depth :: Int
-depth = 8
+depth = 6
 
 win :: Int
-win = 3
+win = 4
 
 initial :: Board
 initial = replicate rows []
@@ -95,17 +95,6 @@ maxPlayer O = False
 tails' :: [a] -> [[a]] -- standard tails ends with an empty list
 tails' = init . tails
 
-seed :: Int
-seed = 40
-
-generator = mkStdGen seed
-
-randElement :: [a] -> a
-randElement xs = xs !! rand
-  where
-    n = length xs
-    (rand, _) = randomR (0, n -1) $ mkStdGen seed
-
 -- I/O
 showBoard :: Board -> String
 showBoard [] = ""
@@ -138,7 +127,7 @@ toSym p
 tag :: [Row] -> Player
 tag [] = B
 tag m =
-  let p = filter (\x -> x `notElem` [Nothing, Just B]) $ map (winner 3) (allCells $ fillm m)
+  let p = filter (\x -> x `notElem` [Nothing, Just B]) $ map (winner win) (allCells $ fillm m)
       extract (Just x) = x
    in if null p then B else extract (head p)
 
@@ -210,7 +199,8 @@ full m = all (\xs -> length xs == cols) m && length m == rows
 -- AI
 bestMove :: Player -> Board -> Int
 bestMove p b =
-  let moves =
+  let rows = length b
+      moves =
         [ (minimax (nextPlayer p) depth $ append p m b, m)
           | m <- [0 .. rows - 1],
             length (b !! m) < cols
@@ -232,4 +222,5 @@ minimax p d m
      in if maxPlayer p then maximum t else minimum t
 
 choices :: Player -> Matrix -> [Matrix]
-choices p m = [append p i m | i <- [0 .. rows - 1], length (m !! i) < cols]
+choices p m = let rows = length m
+              in [append p i m | i <- [0 .. rows - 1], length (m !! i) < cols]
