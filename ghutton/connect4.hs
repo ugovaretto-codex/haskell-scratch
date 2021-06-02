@@ -215,7 +215,6 @@ bestMove p b =
         ]
    in if maxPlayer p then (snd . maximum) moves else (snd . minimum) moves
 
--- AI
 minimax :: Player -> Int -> Matrix -> Player
 minimax _ _ [] = B
 minimax p d m
