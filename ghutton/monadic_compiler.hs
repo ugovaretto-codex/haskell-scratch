@@ -1,6 +1,9 @@
 
 module Main where
-import Control.Monad.Trans.State ( runState, state, State, get )
+import Control.Monad.Trans.State ( runState, state, State, StateT, get )
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Identity
+
 import Debug.Trace
 -- program
 data Prog = Assign Name Expr
